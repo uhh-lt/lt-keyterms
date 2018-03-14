@@ -11,6 +11,7 @@ import org.tartarus.snowball.ext.hungarianStemmer;
 import org.tartarus.snowball.ext.italianStemmer;
 import org.tartarus.snowball.ext.norwegianStemmer;
 import org.tartarus.snowball.ext.porterStemmer;
+import org.tartarus.snowball.ext.portugueseStemmer;
 import org.tartarus.snowball.ext.romanianStemmer;
 import org.tartarus.snowball.ext.russianStemmer;
 import org.tartarus.snowball.ext.spanishStemmer;
@@ -67,7 +68,7 @@ public class TypeCounter {
 			stemmer = new norwegianStemmer();
 			break;
 		case "por":
-			stemmer = new porterStemmer();
+			stemmer = new portugueseStemmer();
 			break;
 		case "ron":
 			stemmer = new romanianStemmer();
