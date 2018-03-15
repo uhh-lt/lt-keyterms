@@ -1,3 +1,4 @@
+package uhh_lt.keyterms;
 import java.util.TreeMap;
 
 import org.tartarus.snowball.SnowballStemmer;
@@ -10,7 +11,6 @@ import org.tartarus.snowball.ext.germanStemmer;
 import org.tartarus.snowball.ext.hungarianStemmer;
 import org.tartarus.snowball.ext.italianStemmer;
 import org.tartarus.snowball.ext.norwegianStemmer;
-import org.tartarus.snowball.ext.porterStemmer;
 import org.tartarus.snowball.ext.portugueseStemmer;
 import org.tartarus.snowball.ext.romanianStemmer;
 import org.tartarus.snowball.ext.russianStemmer;
@@ -165,31 +165,6 @@ public class TypeCounter {
 	public Set<String> getTypes() {
 		return frequency.keySet();
 	}
-
-
-
-	static class ValueComparator implements Comparator<String>{
-		HashMap<String, Long> map = new HashMap<String, Long>();
-		public ValueComparator(Map<String, Long> map) {
-			this.map.putAll(map);
-		}
-		@Override
-		public int compare(String s1, String s2) {
-			if(map.get(s1) > map.get(s2)) {
-				return -1;
-			} else {
-				return 1;
-			}
-		}
-	}
-
-	public static TreeMap<String, Long> sortMapByValue(Map<String, Long> map){
-		Comparator<String> comparator = new ValueComparator(map);
-		TreeMap<String, Long> result = new TreeMap<String, Long>(comparator);
-		result.putAll(map);
-		return result;
-	}
-	
 	
 	public void collapseTypes() {
 		if (stemmer == null)
@@ -212,6 +187,8 @@ public class TypeCounter {
 				Integer shortestTypeLength = Integer.MAX_VALUE;
 				String shortestType = "";
 				Long combinedFrequency = 0L;
+				
+				// TODO: better choose most frequent type instead of shortest one?
 				for (String type : entry.getValue()) {
 					if (type.length() < shortestTypeLength) {
 						shortestTypeLength = type.length();
@@ -237,7 +214,7 @@ public class TypeCounter {
 		String prevToken = "";
 		for (Type token : tokenList) {
 			String currentToken = token.getValue();
-			if (prevToken.matches("[\\.\\?!]") & Character.isUpperCase(currentToken.charAt(0))) {
+			if ((prevToken.isEmpty() || prevToken.matches("[\\.\\?\\!]")) & Character.isUpperCase(currentToken.charAt(0))) {
 				String normalizedToken = currentToken.toLowerCase();
 				if (referenceCounts.getFrequency(normalizedToken) > referenceCounts.getFrequency(currentToken)) {
 					token.setValue(normalizedToken);
@@ -246,6 +223,29 @@ public class TypeCounter {
 			prevToken = currentToken;
 		}
 
+	}
+	
+
+	static class LongValueComparator implements Comparator<String>{
+		HashMap<String, Long> map = new HashMap<String, Long>();
+		public LongValueComparator(Map<String, Long> map) {
+			this.map.putAll(map);
+		}
+		@Override
+		public int compare(String s1, String s2) {
+			if(map.get(s1) > map.get(s2)) {
+				return -1;
+			} else {
+				return 1;
+			}
+		}
+	}
+
+	public static TreeMap<String, Long> sortMapByValue(Map<String, Long> map){
+		Comparator<String> comparator = new LongValueComparator(map);
+		TreeMap<String, Long> result = new TreeMap<String, Long>(comparator);
+		result.putAll(map);
+		return result;
 	}
 
 }

@@ -1,3 +1,4 @@
+package uhh_lt.keyterms;
 
 public class Type {
 
