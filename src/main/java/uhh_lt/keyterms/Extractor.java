@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -74,7 +75,7 @@ public class Extractor {
 
 		TypeCounter counter = new TypeCounter(this.language);
 		int lineCounter = 0;
-		try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(stream, "UTF-8"))) {
 			String line;
 			while ((line = br.readLine()) != null) {
 				lineCounter++;
@@ -270,7 +271,7 @@ public class Extractor {
 			if (cmd.hasOption("v")) {
 				LOGGER.setLevel(Level.ALL);
 			} else {
-				LOGGER.setLevel(Level.SEVERE);
+				LOGGER.setLevel(Level.INFO);
 			}
 			
 			// set target files
@@ -317,7 +318,10 @@ public class Extractor {
 	
 	private String formatResult(Map<String, Double> keywords) {
 		StringBuilder output = new StringBuilder();
+		int kwCounter = 0;
 		for (Map.Entry<String, Double> kw : keywords.entrySet()) {
+			kwCounter++;
+			if (kwCounter > this.nKeyterms) break;
 			output.append(kw.getKey()).append("=").append(kw.getValue()).append(System.lineSeparator());
 		}
 		return output.toString();
