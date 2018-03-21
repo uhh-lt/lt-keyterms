@@ -55,6 +55,11 @@ public class Extractor {
 		super();
 	}
 	
+	public Extractor(String language, Integer nKeyterms) {
+		super();
+		initialize(language, nKeyterms);
+	}
+	
 	public String getLanguage() {
 		return language;
 	}
