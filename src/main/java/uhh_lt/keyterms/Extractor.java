@@ -348,7 +348,7 @@ public class Extractor {
 	}
 	
 	
-	public void initialze(String language, Integer nKeyterms) {
+	public void initialize(String language, Integer nKeyterms) {
 		this.language = language;
 		this.nKeyterms = nKeyterms;
 		this.comparison = loadFrequencyFile(null);
