@@ -54,6 +54,24 @@ public class Extractor {
 	public Extractor() {
 		super();
 	}
+	
+	public String getLanguage() {
+		return language;
+	}
+
+
+	public void setLanguage(String language) {
+		this.language = language;
+	}
+
+
+	public int getnKeyterms() {
+		return nKeyterms;
+	}
+
+	public void setnKeyterms(int nKeyterms) {
+		this.nKeyterms = nKeyterms;
+	}
 
 	public TypeCounter loadFrequencyFile(String referenceFile) {
 
@@ -82,6 +100,8 @@ public class Extractor {
 				String[] entry = line.split("\t");
 				if (entry.length == 2) {
 					counter.addToken(entry[0], Long.parseLong(entry[1]));
+				} else {
+					LOGGER.log(Level.SEVERE, "Invalid reference file format at line: " + lineCounter);
 				}
 			}
 		} catch (FileNotFoundException e) {
@@ -224,7 +244,7 @@ public class Extractor {
 		}
 	}
 
-	public static TreeMap<String, Double> sortMapByValue(Map<String, Double> map){
+	private static TreeMap<String, Double> sortMapByValue(Map<String, Double> map){
 		Comparator<String> comparator = new DoubleValueComparator(map);
 		TreeMap<String, Double> result = new TreeMap<String, Double>(comparator);
 		result.putAll(map);
@@ -232,7 +252,7 @@ public class Extractor {
 	}
 
 
-	public List<String> getConfiguration(String[] args) {
+	private List<String> getConfiguration(String[] args) {
 		cliOptions = new Options();
 
 		Option languageOpt = new Option("l", "language", true, "ISO-639-3 language code (default: eng)");
@@ -325,6 +345,24 @@ public class Extractor {
 			output.append(kw.getKey()).append("=").append(kw.getValue()).append(System.lineSeparator());
 		}
 		return output.toString();
+	}
+	
+	
+	public void initialze(String language, Integer nKeyterms) {
+		this.language = language;
+		this.nKeyterms = nKeyterms;
+		this.comparison = loadFrequencyFile(null);
+		this.comparison.process();
+	}
+	
+	public Set<String> extract(List<String> document) {
+		this.target = new TypeCounter(this.language);
+		for (String token : document) {
+			this.target.addToken(token);
+		}
+		this.target.process(comparison);
+		Map<String, Double> keywords = getKeywords();
+		return keywords.keySet();
 	}
 
 

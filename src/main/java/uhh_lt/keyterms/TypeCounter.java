@@ -106,15 +106,13 @@ public class TypeCounter {
 	}
 	
 	public void process() {
-		process(null);
+		countTokens();
+		collapseTypes();
 	}
 	
 	public void process(TypeCounter referenceCounts) {
-		if (referenceCounts != null) {
-			normalizeSentenceBeginning(referenceCounts);
-		}
-		countTokens();
-		collapseTypes();
+		normalizeSentenceBeginning(referenceCounts);
+		process();
 	}
 
 	public void countTokens() {
