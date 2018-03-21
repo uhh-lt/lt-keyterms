@@ -353,7 +353,7 @@ public class Extractor {
 		this.comparison.process();
 	}
 	
-	public Set<String> extract(List<String> document) {
+	public synchronized Set<String> extract(List<String> document) {
 		this.target = new TypeCounter(this.language);
 		for (String token : document) {
 			this.target.addToken(token);
