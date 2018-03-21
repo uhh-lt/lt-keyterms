@@ -6,8 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -17,10 +15,8 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,7 +51,7 @@ public class Extractor {
 		super();
 	}
 	
-	public Extractor(String language, Integer nKeyterms) {
+	public Extractor(String language, Integer nKeyterms) throws IOException {
 		super();
 		initialize(language, nKeyterms);
 	}
@@ -78,7 +74,7 @@ public class Extractor {
 		this.nKeyterms = nKeyterms;
 	}
 
-	public TypeCounter loadFrequencyFile(String referenceFile) {
+	public TypeCounter loadFrequencyFile(String referenceFile) throws IOException {
 
 		// use external reference data
 		String filePath = referenceFile;
@@ -110,14 +106,11 @@ public class Extractor {
 				}
 			}
 		} catch (FileNotFoundException e) {
-			LOGGER.log(Level.SEVERE, "Unknown language code: " + this.language);
-			System.exit(1);
+			throw new IOException("Unknown language code: " + this.language);
 		} catch (IOException e) {
-			LOGGER.log(Level.SEVERE, "Could not read file " + filePath);
-			System.exit(1);
+			throw new IOException("Could not read file " + filePath);
 		} catch (ArrayIndexOutOfBoundsException e) {
-			LOGGER.log(Level.SEVERE, "File " + filePath + " malformed at line " + lineCounter);
-			System.exit(1);
+			throw new IOException("File " + filePath + " malformed at line " + lineCounter);
 		}
 		return counter;
 	}
@@ -353,7 +346,7 @@ public class Extractor {
 	}
 	
 	
-	public void initialize(String language, Integer nKeyterms) {
+	public void initialize(String language, Integer nKeyterms) throws IOException {
 		this.language = language;
 		this.nKeyterms = nKeyterms;
 		this.comparison = loadFrequencyFile(null);
@@ -376,7 +369,11 @@ public class Extractor {
 		Extractor extractor = new Extractor();
 		List<String> filesToProcess = extractor.getConfiguration(args);
 
-		extractor.comparison = extractor.loadFrequencyFile(null);
+		try {
+			extractor.comparison = extractor.loadFrequencyFile(null);
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
 		extractor.comparison.process();
 
 		if (filesToProcess.isEmpty()) {
