@@ -33,6 +33,4 @@ public class Type {
 		this.count = count;
 	}
 	
-	
-	
 }

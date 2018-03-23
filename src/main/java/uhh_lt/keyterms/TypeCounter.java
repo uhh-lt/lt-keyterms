@@ -94,7 +94,10 @@ public class TypeCounter {
 	}
 
 	public void addToken(String token, Long count, String pos) {
-		tokenList.add(new Type(token, count, pos));
+		token = clean(token);
+		if (!token.isEmpty()) {
+			tokenList.add(new Type(token, count, pos));
+		}
 	}
 
 	public void addToken(String token, Long count) {
@@ -103,6 +106,10 @@ public class TypeCounter {
 
 	public void addToken(String token) {
 		addToken(token, 1L, null);
+	}
+	
+	private String clean(String token) {
+		return token.replaceAll("^[^\\p{L}]", "").replaceAll("[^\\p{L}]$", "");
 	}
 	
 	public void process() {
