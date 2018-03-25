@@ -31,31 +31,27 @@ import org.apache.commons.cli.ParseException;
 
 public class Extractor {
 
+	private final static Double MINIMUM_KEYNESS_THRESHOLD = 3.84;
+
 	private final static Logger LOGGER = 
 			Logger.getLogger(Extractor.class.getName());
 
 	private Options cliOptions;
 
-	private TypeCounter target;
-	private TypeCounter comparison;
-	
+	private Dictionary comparison;
+
 	private int nKeyterms;
 	private String language;
-
-	Pattern wordbounds = Pattern.compile(
-			"[\\w-]+|[^\\w-]",
-			Pattern.UNICODE_CHARACTER_CLASS
-			);
 
 	public Extractor() {
 		super();
 	}
-	
+
 	public Extractor(String language, Integer nKeyterms) throws IOException {
 		super();
 		initialize(language, nKeyterms);
 	}
-	
+
 	public String getLanguage() {
 		return language;
 	}
@@ -74,107 +70,61 @@ public class Extractor {
 		this.nKeyterms = nKeyterms;
 	}
 
-	public TypeCounter loadFrequencyFile(String referenceFile) throws IOException {
-
-		// use external reference data
-		String filePath = referenceFile;
-
-		// use provided reference data
-		if (filePath == null || filePath.isEmpty()) {
-			filePath = "wordlists/" + this.language + ".tsv";
-		}
-
-		InputStream stream = getClass().getResourceAsStream(filePath);
-
-		if (stream != null) {
-			LOGGER.log(Level.INFO, "Reading reference file: {0}", filePath);
-		} else {
-			LOGGER.log(Level.WARNING, "Reference file not found: {0}", filePath);
-		}
-
-		TypeCounter counter = new TypeCounter(this.language);
-		int lineCounter = 0;
-		try (BufferedReader br = new BufferedReader(new InputStreamReader(stream, "UTF-8"))) {
-			String line;
-			while ((line = br.readLine()) != null) {
-				lineCounter++;
-				String[] entry = line.split("\t");
-				if (entry.length == 2) {
-					counter.addToken(entry[0], Long.parseLong(entry[1]));
-				} else {
-					LOGGER.log(Level.SEVERE, "Invalid reference file format at line: " + lineCounter);
-				}
-			}
-		} catch (FileNotFoundException e) {
-			throw new IOException("Unknown language code: " + this.language);
-		} catch (IOException e) {
-			throw new IOException("Could not read file " + filePath);
-		} catch (ArrayIndexOutOfBoundsException e) {
-			throw new IOException("File " + filePath + " malformed at line " + lineCounter);
-		}
-		return counter;
-	}
-
-	public TypeCounter loadTxt(File file) {
-		StringBuilder sb = new StringBuilder();
-		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-			String line;
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
-		} catch (FileNotFoundException e) {
-			LOGGER.log(Level.SEVERE, "Could not find file " + file);
-			System.exit(1);
-		} catch (IOException e) {
-			LOGGER.log(Level.SEVERE, "Could not read file " + file);
-			System.exit(1);
-		}
-		return loadTxt(sb.toString());		
-	}
-
-
-	private TypeCounter loadTxt(String string) {
-		TypeCounter tokens = new TypeCounter(this.language);
-		for (String token : tokenize(string)) {
-			tokens.addToken(token);
-		}
-		return tokens;
-	}
-
-	public List<String> tokenize(String sequence) {
-		Matcher matcher = wordbounds.matcher(sequence);
-		List<String> tokenList = new ArrayList<String>();
-		while (matcher.find()) {
-			String token = matcher.group(0).trim();
-			if (!token.isEmpty()) {
-				tokenList.add(token);
-			}
-		}
-		return tokenList;
-	}
 
 
 
-	private TreeMap<String, Double> getKeywords() {
+	private TreeMap<String, Double> getKeyness(Dictionary target) {
 
 		long c = target.getTotalCounts();
 		long d = comparison.getTotalCounts();
 
 		// compute significance
 		TreeMap<String, Double> significances = new TreeMap<String, Double>();
-		Set<String> candidates = target.getTypes();
+		Set<String> candidates = target.getVocabulary();
 		candidates = filterKeytermCandidates(candidates);
 		for (String type : candidates) {
-			long a = target.getFrequency(type);
-			long b = comparison.getFrequency(type);
+			long a = target.getStemFrequency(type);
+			long b = comparison.getStemFrequency(type);
 			Double significance = computeLogLikelihood(a, b, c, d);
 			significances.put(type, significance);
 		}
 
-		// sort
-		significances = sortMapByValue(significances);
-
 		return(significances);
+	}
+
+
+	private TreeMap<String, Double> getKeyterms(Dictionary target) {
+
+		TreeMap<String, Double> candidates = getKeyness(target);
+
+		// top n words + minimum keyness filter
+		TreeMap<String, Double> keyterms = new TreeMap<String, Double>();
+		for (Map.Entry<String, Double> candidate : candidates.entrySet()) {
+			if (candidate.getValue() >= MINIMUM_KEYNESS_THRESHOLD) {
+				keyterms.put(target.getTypeFromStem(candidate.getKey()), candidate.getValue());
+			}
+		}
+		
+		// bigram concatenation
+		// count bigrams
+		// eval dice > 0.5
+		// loop over sig pairs: add pair to keyterms and remove single terms (keep max value of sig)
+
+		
+
+		// sort
+		keyterms = sortMapByValue(keyterms);
+
+		return keyterms;
+
+	}
+
+	private Double dice(Long a, Long b, Long ab) {
+		return 2 * ab / (double) (a + b);
+	}
+
+	private Double diceTrigram(Long a, Long b, Long c, Long abc) {
+		return 3 * abc / (double) (a + b + c);
 	}
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
@@ -256,7 +206,7 @@ public class Extractor {
 		Option languageOpt = new Option("l", "language", true, "ISO-639-3 language code (default: eng)");
 		languageOpt.setRequired(false);
 		cliOptions.addOption(languageOpt);
-		
+
 		Option nOpt = new Option("n", "number", true, "Number of key terms to extract (default: 25)");
 		nOpt.setRequired(false);
 		cliOptions.addOption(nOpt);
@@ -264,24 +214,24 @@ public class Extractor {
 		Option verboseOpt = new Option("v", "verbose", false, "Output debug information");
 		verboseOpt.setRequired(false);
 		cliOptions.addOption(verboseOpt);
-		
+
 		Option helpOpt = new Option("h", "help", false, "Display help information");
 		helpOpt.setRequired(false);
 		cliOptions.addOption(helpOpt);
-	
+
 		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
 		CommandLine cmd;
 		List<String> targetFiles = new ArrayList<String>();
 		try {
 			cmd = parser.parse(cliOptions, args);
-			
+
 			// display help
 			if (cmd.hasOption("h")) {
 				formatter.printHelp("lt-keyterms <options> [file1 [file2 file3 ...]]", cliOptions);
 				System.exit(0);
 			}
-			
+
 			// set language
 			this.language = cmd.getOptionValue("l") == null ? "eng" : cmd.getOptionValue("l");
 
@@ -291,13 +241,13 @@ public class Extractor {
 			} else {
 				LOGGER.setLevel(Level.INFO);
 			}
-			
+
 			// set target files
 			targetFiles = cmd.getArgList();
-			
+
 			// set number of keyterms
 			this.nKeyterms =  cmd.getOptionValue("n") == null ? 25 : Integer.parseInt(cmd.getOptionValue("n"));
-			
+
 		} catch (ParseException e) {
 			System.out.println(e.getMessage());
 			formatter.printHelp("lt-keyterms <options> [file1 [file2 file3 ...]]", cliOptions);
@@ -312,9 +262,10 @@ public class Extractor {
 	private void processTargets(List<String> files) {
 		for (String f : files) {
 			LOGGER.log(Level.INFO, "Extracting keyterms from " + f);
-			target = loadTxt(new File(f));
-			target.process(comparison);
-			System.out.println(formatResult(getKeywords()));
+			Document targetDocument = Document.readTextFile(new File(f), this.language);
+			targetDocument.normalizeSentenceBeginning(comparison);
+			Dictionary target = new Dictionary(this.language, targetDocument);
+			System.out.println(formatResult(getKeyterms(target)));
 		}
 	}
 
@@ -327,13 +278,13 @@ public class Extractor {
 			sb.append(scanner.nextLine()).append("\n");
 		}
 		scanner.close();
-
-		target = loadTxt(sb.toString());
-		target.process(comparison);
-		System.out.println(formatResult(getKeywords()));
+		Document targetDocument = Document.readText(sb.toString(), this.language);
+		targetDocument.normalizeSentenceBeginning(comparison);
+		Dictionary target = new Dictionary(this.language, targetDocument);
+		System.out.println(formatResult(getKeyterms(target)));
 	}
-	
-	
+
+
 	private String formatResult(Map<String, Double> keywords) {
 		StringBuilder output = new StringBuilder();
 		int kwCounter = 0;
@@ -344,24 +295,28 @@ public class Extractor {
 		}
 		return output.toString();
 	}
-	
-	
+
+
 	public void initialize(String language, Integer nKeyterms) throws IOException {
 		this.language = language;
 		this.nKeyterms = nKeyterms;
-		this.comparison = loadFrequencyFile(null);
-		this.comparison.process();
+		this.comparison = new Dictionary(language);
+		this.comparison.createFromDictionaryFile();
 	}
-	
+
 	public synchronized Set<String> extract(List<String> document) {
-		this.target = new TypeCounter(this.language);
-		for (String token : document) {
-			this.target.addToken(token);
-		}
-		this.target.process(comparison);
-		Map<String, Double> keywords = getKeywords();
+
+		Document targetDocument = new Document(this.language);
+		targetDocument.load(document);
+		targetDocument.normalizeSentenceBeginning(comparison);
+		Dictionary target = new Dictionary(this.language, targetDocument);
+
+		Map<String, Double> keywords = getKeyterms(target);
 		return keywords.keySet();
 	}
+
+
+
 
 
 	public static void main(String[] args) {
@@ -370,11 +325,11 @@ public class Extractor {
 		List<String> filesToProcess = extractor.getConfiguration(args);
 
 		try {
-			extractor.comparison = extractor.loadFrequencyFile(null);
+			extractor.comparison = new Dictionary(extractor.language);
+			extractor.comparison.createFromDictionaryFile();
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 		}
-		extractor.comparison.process();
 
 		if (filesToProcess.isEmpty()) {
 			extractor.processFromStdin();
