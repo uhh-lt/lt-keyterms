@@ -25,7 +25,7 @@ public class Dictionary {
 	private Long totalCounts;
 	private HashSet<String> stopwords;
 	private HashMap<String, String> stemTypeMapping;
-	private Stemmer stemmer;
+	private StemmerWrapper stemmer;
 
 	private TreeMultiset<String> typeFrequencies;
 	private TreeMultiset<String> stemFrequencies;
@@ -35,7 +35,7 @@ public class Dictionary {
 
 	public Dictionary(String language) {
 		this.language = language;
-		stemmer = new Stemmer(language);
+		stemmer = new StemmerWrapper(language);
 		try {
 			createFromDictionaryFile();
 		} catch (IOException e) {
@@ -45,7 +45,7 @@ public class Dictionary {
 
 	public Dictionary(String language, Document document) {
 		this.language = language;
-		stemmer = new Stemmer(language);
+		stemmer = new StemmerWrapper(language);
 		createFromDocument(document);
 	}
 
@@ -64,6 +64,10 @@ public class Dictionary {
 
 	private String clean(String token) {
 		return token.replaceAll("^[^\\p{L}]", "").replaceAll("[^\\p{L}]$", "");
+	}
+	
+	public StemmerWrapper getStemmer() {
+		return stemmer;
 	}
 
 	public void countVocabulary(Document document) {

@@ -17,11 +17,11 @@ import org.tartarus.snowball.ext.spanishStemmer;
 import org.tartarus.snowball.ext.swedishStemmer;
 import org.tartarus.snowball.ext.turkishStemmer;
 
-public class Stemmer {
+public class StemmerWrapper {
 	
 	private SnowballStemmer stemmer;
 
-	public Stemmer(String language) {
+	public StemmerWrapper(String language) {
 		super();
 		switch (language) {
 		case "eng":
@@ -70,7 +70,7 @@ public class Stemmer {
 			stemmer = new turkishStemmer();
 			break;
 		default:
-			stemmer = new noStemmer();
+			stemmer = new NoStemmer();
 		}
 
 	}
@@ -80,14 +80,18 @@ public class Stemmer {
 		stemmer.stem();
 		return stemmer.getCurrent();
 	}
-
-	public class noStemmer extends org.tartarus.snowball.SnowballStemmer {
+	
+	public class NoStemmer extends org.tartarus.snowball.SnowballStemmer {
 
 		@Override
 		public boolean stem() {
 			return true;
 		}
 
+	}
+
+	public SnowballStemmer getStemmer() {
+		return stemmer;
 	}
 
 }

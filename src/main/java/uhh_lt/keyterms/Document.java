@@ -37,6 +37,8 @@ import org.tartarus.snowball.ext.turkishStemmer;
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.text.RuleBasedBreakIterator;
 
+import uhh_lt.keyterms.StemmerWrapper.NoStemmer;
+
 public class Document extends ArrayList<Token> {
 
 	/**
@@ -53,12 +55,12 @@ public class Document extends ArrayList<Token> {
 			);
 
 	private String language;
-	private Stemmer stemmer;
+	private StemmerWrapper stemmer;
 
 	public Document(String language) {
 		super();
 		this.language = language;
-		stemmer = new Stemmer(language);
+		stemmer = new StemmerWrapper(language);
 	}
 
 
@@ -156,7 +158,7 @@ public class Document extends ArrayList<Token> {
 		Pattern pattern = Pattern.compile("(\\r\\n|\\r|\\n){2,}", Pattern.DOTALL);
 		Matcher matcher = pattern.matcher(sequence);
 		sequence = matcher.replaceAll("\n.\n");
-		if (Stemmer.noStemmer.class.isInstance(this.stemmer)) {
+		if (this.stemmer.getStemmer() instanceof NoStemmer) {
 			return tokenizeICU(sequence);
 		} else {
 			return tokenizeRegex(sequence);

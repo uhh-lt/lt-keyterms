@@ -24,6 +24,8 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.TreeMultiset;
 
+import uhh_lt.keyterms.StemmerWrapper.NoStemmer;
+
 
 public class Extractor {
 
@@ -202,6 +204,11 @@ public class Extractor {
 
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
+		
+		// only apply filter to languages with available stemmer
+		if (this.comparison.getStemmer().getStemmer() instanceof NoStemmer) {
+			return candidates;
+		}
 
 		HashSet<String> filteredSet = new HashSet<String>();
 		for (String candidate : candidates) {
