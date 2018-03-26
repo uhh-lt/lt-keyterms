@@ -18,7 +18,7 @@ import java.util.Set;
 
 public class Dictionary {
 
-	public static final int STOP_WORD_RANK = 500;
+	public static final int STOP_WORD_RANK = 1000;
 	private final static Logger LOGGER = 
 			Logger.getLogger(Extractor.class.getName());
 
