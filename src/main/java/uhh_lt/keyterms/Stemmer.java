@@ -81,7 +81,7 @@ public class Stemmer {
 		return stemmer.getCurrent();
 	}
 
-	private class noStemmer extends org.tartarus.snowball.SnowballStemmer {
+	public class noStemmer extends org.tartarus.snowball.SnowballStemmer {
 
 		@Override
 		public boolean stem() {

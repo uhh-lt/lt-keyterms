@@ -48,7 +48,7 @@ public class Document extends ArrayList<Token> {
 			Logger.getLogger(Extractor.class.getName());
 
 	Pattern wordbounds = Pattern.compile(
-			"[\\w-]+|[^\\w-]",
+			"[\\w]+|[^\\w]",
 			Pattern.UNICODE_CHARACTER_CLASS
 			);
 
@@ -133,7 +133,7 @@ public class Document extends ArrayList<Token> {
 	}
 
 
-	public List<String> tokenize(String sequence) throws MissingResourceException {
+	public List<String> tokenizeICU(String sequence) throws MissingResourceException {
 
 		Locale locale = getIso2LocaleMap().get(this.language);
 		if (locale == null) {
@@ -150,6 +150,17 @@ public class Document extends ArrayList<Token> {
 		}
 
 		return tokens;
+	}
+	
+	public List<String> tokenize(String sequence) throws MissingResourceException {
+		Pattern pattern = Pattern.compile("(\\r\\n|\\r|\\n){2,}", Pattern.DOTALL);
+		Matcher matcher = pattern.matcher(sequence);
+		sequence = matcher.replaceAll("\n.\n");
+		if (Stemmer.noStemmer.class.isInstance(this.stemmer)) {
+			return tokenizeICU(sequence);
+		} else {
+			return tokenizeRegex(sequence);
+		}
 	}
 
 	public static Map<String, Locale> getIso2LocaleMap() {
