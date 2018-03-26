@@ -20,10 +20,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import com.google.common.collect.TreeMultiset;
+
 
 public class Extractor {
 
-	private final static Double MINIMUM_KEYNESS_THRESHOLD = 3.84;
+	private final static Double MINIMUM_KEYNESS_THRESHOLD = 6.63; // 3.84;
 
 	private final static Logger LOGGER = 
 			Logger.getLogger(Extractor.class.getName());
@@ -85,7 +87,7 @@ public class Extractor {
 	}
 
 
-	private TreeMap<String, Double> getKeyterms(Dictionary target) {
+	private TreeMap<String, Double> getKeyterms(Dictionary target, Document document) {
 
 		TreeMap<String, Double> candidates = getKeyness(target);
 
@@ -101,7 +103,39 @@ public class Extractor {
 		// count bigrams
 		// eval dice > 0.5
 		// loop over sig pairs: add pair to keyterms and remove single terms (keep max value of sig)
-
+		Token prevToken = null;
+		TreeMultiset<String> bigrams = TreeMultiset.create();
+		for (Token token : document) {
+			if (token.getValue().equals("-")) continue;
+			if (prevToken != null) {
+				String type1 = target.getTypeFromStem(prevToken.getStem());
+				String type2 = target.getTypeFromStem(token.getStem());
+				if (keyterms.containsKey(type1) && keyterms.containsKey(type2)) {
+					bigrams.add(prevToken.getStem() + "\t" + token.getStem());
+				}
+			}
+			prevToken = token;
+		}
+		HashSet<String> unigramsToRemove = new HashSet<String>();
+		for (String bigram : bigrams.elementSet()) {
+			String[] stems = bigram.split("\t");
+			long a = target.getStemFrequency(stems[0]);
+			long b = target.getStemFrequency(stems[1]);
+			Double dice = dice(a, b, (long) bigrams.count(bigram));
+			if (dice >= 0.5) {
+				String type1 = target.getTypeFromStem(stems[0]);
+				String type2 = target.getTypeFromStem(stems[1]);
+				Double maxKeyness = Math.max(keyterms.get(type1), keyterms.get(type2));
+				keyterms.put(type1 + " " + type2, maxKeyness);
+				unigramsToRemove.add(type1);
+				unigramsToRemove.add(type2);
+				LOGGER.log(Level.FINEST, "MWU detected: " + type1 + " " + type2 + "(" + maxKeyness + ")");
+			}
+			
+		}
+		for (String u : unigramsToRemove) {
+			keyterms.remove(u);
+		}
 		
 
 		// sort
@@ -115,9 +149,6 @@ public class Extractor {
 		return 2 * ab / (double) (a + b);
 	}
 
-	private Double diceTrigram(Long a, Long b, Long c, Long abc) {
-		return 3 * abc / (double) (a + b + c);
-	}
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
 
@@ -257,7 +288,7 @@ public class Extractor {
 			Document targetDocument = Document.readTextFile(new File(f), this.language);
 			targetDocument.normalizeSentenceBeginning(comparison);
 			Dictionary target = new Dictionary(this.language, targetDocument);
-			System.out.println(formatResult(getKeyterms(target)));
+			System.out.println(formatResult(getKeyterms(target, targetDocument)));
 		}
 	}
 
@@ -273,7 +304,7 @@ public class Extractor {
 		Document targetDocument = Document.readText(sb.toString(), this.language);
 		targetDocument.normalizeSentenceBeginning(comparison);
 		Dictionary target = new Dictionary(this.language, targetDocument);
-		System.out.println(formatResult(getKeyterms(target)));
+		System.out.println(formatResult(getKeyterms(target, targetDocument)));
 	}
 
 
@@ -303,7 +334,7 @@ public class Extractor {
 		targetDocument.normalizeSentenceBeginning(comparison);
 		Dictionary target = new Dictionary(this.language, targetDocument);
 
-		Map<String, Double> keywords = getKeyterms(target);
+		Map<String, Double> keywords = getKeyterms(target, targetDocument);
 		return keywords.keySet();
 	}
 
