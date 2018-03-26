@@ -2,7 +2,6 @@ package uhh_lt.keyterms;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.common.collect.Multiset;
 import com.google.common.collect.Multiset.Entry;
 import com.google.common.collect.Multisets;
 import com.google.common.collect.TreeMultiset;
@@ -12,7 +11,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
