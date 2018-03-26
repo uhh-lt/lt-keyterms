@@ -20,6 +20,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.TreeMultiset;
 
 
@@ -36,6 +38,8 @@ public class Extractor {
 
 	private int nKeyterms;
 	private String language;
+	private boolean concatMultiWordUnits;
+	private double diceThreshold = 0.4;
 
 	public Extractor() {
 		super();
@@ -64,6 +68,9 @@ public class Extractor {
 		this.nKeyterms = nKeyterms;
 	}
 
+	public void log(Level level, String message) {
+		LOGGER.log(level, message);
+	}
 
 
 
@@ -98,45 +105,12 @@ public class Extractor {
 				keyterms.put(target.getTypeFromStem(candidate.getKey()), candidate.getValue());
 			}
 		}
-		
-		// bigram concatenation
-		// count bigrams
-		// eval dice > 0.5
-		// loop over sig pairs: add pair to keyterms and remove single terms (keep max value of sig)
-		Token prevToken = null;
-		TreeMultiset<String> bigrams = TreeMultiset.create();
-		for (Token token : document) {
-			if (token.getValue().equals("-")) continue;
-			if (prevToken != null) {
-				String type1 = target.getTypeFromStem(prevToken.getStem());
-				String type2 = target.getTypeFromStem(token.getStem());
-				if (keyterms.containsKey(type1) && keyterms.containsKey(type2)) {
-					bigrams.add(prevToken.getStem() + "\t" + token.getStem());
-				}
-			}
-			prevToken = token;
+
+
+		// concatenate MWU
+		if (this.concatMultiWordUnits) {
+			keyterms = concatMultiWords(keyterms, target, document);
 		}
-		HashSet<String> unigramsToRemove = new HashSet<String>();
-		for (String bigram : bigrams.elementSet()) {
-			String[] stems = bigram.split("\t");
-			long a = target.getStemFrequency(stems[0]);
-			long b = target.getStemFrequency(stems[1]);
-			Double dice = dice(a, b, (long) bigrams.count(bigram));
-			if (dice >= 0.5) {
-				String type1 = target.getTypeFromStem(stems[0]);
-				String type2 = target.getTypeFromStem(stems[1]);
-				Double maxKeyness = Math.max(keyterms.get(type1), keyterms.get(type2));
-				keyterms.put(type1 + " " + type2, maxKeyness);
-				unigramsToRemove.add(type1);
-				unigramsToRemove.add(type2);
-				LOGGER.log(Level.FINEST, "MWU detected: " + type1 + " " + type2 + "(" + maxKeyness + ")");
-			}
-			
-		}
-		for (String u : unigramsToRemove) {
-			keyterms.remove(u);
-		}
-		
 
 		// sort
 		keyterms = sortMapByValue(keyterms);
@@ -145,9 +119,86 @@ public class Extractor {
 
 	}
 
-	private Double dice(Long a, Long b, Long ab) {
-		return 2 * ab / (double) (a + b);
+
+
+	private TreeMap<String, Double> concatMultiWords(TreeMap<String, Double> keyterms, Dictionary target, Document document) {
+		Token prevToken = null;
+		TreeMultiset<NGram> ngrams = TreeMultiset.create();
+		Character currentSeparator = ' ';
+		List<NGram> activeNGrams = new ArrayList<NGram>();
+		for (Token token : document) {
+			if (prevToken != null) {
+				if (token.getValue().equals("-")) {
+					currentSeparator = '-';
+					continue;
+				}
+			}
+			String type = target.getTypeFromStem(token.getStem());
+			if (keyterms.containsKey(type)) {
+
+				NGram ngram = new NGram();
+				activeNGrams.add(ngram);
+				for (NGram ng : activeNGrams) {
+					ng.append(token, type, keyterms.get(type), currentSeparator);
+				}
+				for (NGram ng : activeNGrams) {
+					try {
+						ngrams.add(ng.clone());
+					} catch (CloneNotSupportedException e) {
+						e.printStackTrace();
+					}
+				}
+			} else {
+				activeNGrams = new ArrayList<NGram>();
+				currentSeparator = ' ';
+			}
+			prevToken = token;
+		}
+
+		// filter multiwords by Dice
+		TreeMap<String, Double> keyMultiWords = new TreeMap<String, Double>();
+		for (NGram ng : ngrams.elementSet()) {
+			Double dice = dice(ngrams.count(ng), ng.getPartialCounts(target));
+			if (dice >= this.diceThreshold) {
+				Double maxKeyness = ng.keyness();
+				LOGGER.log(Level.FINEST, "MWU detected: " + ng + " (" + maxKeyness + ")");
+				keyMultiWords.put(ng.toString(), maxKeyness);
+			}
+		}
+
+		// clean multiwords (longest match)
+		Set<String> mwus = keyMultiWords.keySet();
+		Set<String> mwusToRemove = new HashSet<String>();
+		for (String mwu : mwus) {
+			if (longerMatchExists(mwu, mwus)) {
+				mwusToRemove.add(mwu);
+			}
+		}
+		for (String mwu : mwusToRemove) {
+			keyMultiWords.remove(mwu);
+			LOGGER.log(Level.FINEST, "Removing " + mwu);
+		}
+		return keyMultiWords;
 	}
+
+
+	private boolean longerMatchExists(String candidate, Set<String> testSet) {
+		for (String c : testSet) {
+			if (c.matches(candidate + "[ -].+") || c.matches(".+[ -]" + candidate)) return true;
+		}
+		return false;
+	}
+
+	private Double dice(long nCooc, long... parts) {
+		int n = parts.length;
+		double numerator = (double) n * nCooc;
+		double denominator = .0;
+		for (Long p : parts) {
+			denominator += p;
+		}
+		return numerator / denominator;
+	}
+
 
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
@@ -234,6 +285,14 @@ public class Extractor {
 		nOpt.setRequired(false);
 		cliOptions.addOption(nOpt);
 
+		Option mwuOpt = new Option("m", "mwu-off", false, "Disable multi-word concatenation (default: false)");
+		mwuOpt.setRequired(false);
+		cliOptions.addOption(mwuOpt);
+
+		Option diceOpt = new Option("d", "dice-threshold", true, "Threshold between [0; 1] of dice statistic for multi-word concatenation (default: 0.4)");
+		diceOpt.setRequired(false);
+		cliOptions.addOption(diceOpt);
+
 		Option verboseOpt = new Option("v", "verbose", false, "Output debug information");
 		verboseOpt.setRequired(false);
 		cliOptions.addOption(verboseOpt);
@@ -263,6 +322,21 @@ public class Extractor {
 				LOGGER.setLevel(Level.ALL);
 			} else {
 				LOGGER.setLevel(Level.INFO);
+			}
+
+			// set mwu
+			if (cmd.hasOption("m")) {
+				this.concatMultiWordUnits = false;
+			} else {
+				this.concatMultiWordUnits = true;
+			}
+
+			// set dice threshold
+			if (cmd.hasOption("d")) {
+				double d = Double.parseDouble(cmd.getOptionValue("d"));
+				if (d < 0 || d > 1) throw new NumberFormatException();
+			} else {
+				this.diceThreshold = 0.4;
 			}
 
 			// set target files
@@ -345,14 +419,11 @@ public class Extractor {
 	public static void main(String[] args) {
 
 		Extractor extractor = new Extractor();
+		extractor.log(Level.INFO, "Keyterm extraction, Language Technology group (Hamburg University)");
+		extractor.log(Level.INFO, "------------------------------------------------------------------");
 		List<String> filesToProcess = extractor.getConfiguration(args);
 
-		try {
-			extractor.comparison = new Dictionary(extractor.language);
-			extractor.comparison.createFromDictionaryFile();
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
-		}
+		extractor.comparison = new Dictionary(extractor.language);
 
 		if (filesToProcess.isEmpty()) {
 			extractor.processFromStdin();

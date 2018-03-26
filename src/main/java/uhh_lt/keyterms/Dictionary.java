@@ -39,8 +39,7 @@ public class Dictionary {
 		try {
 			createFromDictionaryFile();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 
@@ -179,9 +178,9 @@ public class Dictionary {
 		InputStream stream = getClass().getResourceAsStream(filePath);
 
 		if (stream != null) {
-			LOGGER.log(Level.INFO, "Reading reference file: {0}", filePath);
+			LOGGER.log(Level.INFO, "Reading reference file: " + filePath);
 		} else {
-			LOGGER.log(Level.WARNING, "Reference file not found: {0}", filePath);
+			LOGGER.log(Level.WARNING, "Reference file not found: " + filePath);
 		}
 
 		int lineCounter = 0;
