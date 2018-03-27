@@ -32,10 +32,13 @@ usage: lt-keyterms <options> [file1 [file2 file3 ...]]
  -m,--mwu-off                Disable multi-word concatenation (default:
                              false)
  -n,--number <arg>           Number of key terms to extract (default: 25)
+ -r,--reference <arg>        External reference resource file (file
+                             format: 'type\tfrequency', one per line).
  -v,--verbose                Output more log information
 ```
 
-You can provide one or more file as arguments:
+You can provide one or more file as arguments. Two or more files will be
+concatenated into one text corpus before keyterm extraction.
 
 ```
 java -jar target/lt-keyterms.jar -l deu src/test/resources/deu_sample.txt
@@ -73,11 +76,12 @@ cat src/test/resources/ara_sample.txt | java -jar target/lt-keyterms.jar -l ara
 * swedish (swe)
 * turkish (tur)
 
+You need another language? Just open an issue in this repository.
 
 # Creating own reference list
 
 Languages which are currently not supported or any project specific reference
-resource can be easily integrated by the following steps:
+resource can also be easily integrated by the following steps:
 
 1. Load a representative language resource, e.g. a 100.000 sentences
 corpus compiled by the [Leipzig Corpora Collection](http://wortschatz.uni-leipzig.de/en/download)
@@ -97,7 +101,24 @@ cat my_document.txt | java -jar target/lt-keyterms.jar -r my_new_reference.tsv
 
 # Java API
 
-You can install the package via maven. Add this to your `pom.xml`
+You can use the package via maven. Add this to your `pom.xml`
+
+```
+	<repositories>
+		<repository>
+		    <id>jitpack.io</id>
+		    <url>https://jitpack.io</url>
+		</repository>
+	</repositories>
+```
+
+```
+	<dependency>
+	    <groupId>com.github.uhh-lt</groupId>
+	    <artifactId>lt-keyterms</artifactId>
+	    <version>-SNAPSHOT</version>
+	</dependency>
+```
 
 In your Java program, you can use keyterm/keyphrase extraction like this:
 
