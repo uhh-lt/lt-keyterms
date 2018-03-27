@@ -5,25 +5,31 @@ import java.util.logging.Logger;
 import com.google.common.collect.Multiset.Entry;
 import com.google.common.collect.Multisets;
 import com.google.common.collect.TreeMultiset;
+import com.google.common.io.Files;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public class Dictionary {
 
-	public static final int STOP_WORD_RANK = 1000;
+	public static final int STOP_WORD_RANK = 500;
 	private final static Logger LOGGER = 
 			Logger.getLogger(Extractor.class.getName());
 
 	private Long totalCounts;
-	private HashSet<String> stopwords;
+	private SortedSet<String> stopwords;
 	private HashMap<String, String> stemTypeMapping;
 	private StemmerWrapper stemmer;
 
@@ -54,7 +60,7 @@ public class Dictionary {
 		// createStopwordList();
 		createStemTypeMapping();
 	}
-	
+
 	public void createFromDictionaryFile() throws IOException {
 		String filePath = "wordlists/" + this.language + ".tsv";
 		loadDictionaryFile(filePath);
@@ -65,7 +71,7 @@ public class Dictionary {
 	private String clean(String token) {
 		return token.replaceAll("^[^\\p{L}]", "").replaceAll("[^\\p{L}]$", "");
 	}
-	
+
 	public StemmerWrapper getStemmer() {
 		return stemmer;
 	}
@@ -78,7 +84,7 @@ public class Dictionary {
 		// count types
 		totalCounts = 0L;
 		for (Token token : document) {
-			
+
 			String type = clean(token.getValue());
 			if (!type.isEmpty()) {
 				String stem = clean(token.getStem());
@@ -86,25 +92,43 @@ public class Dictionary {
 				typeFrequencies.add(type);
 				totalCounts++;
 			}
-			
+
 		}
 
 	}
 
 	public void createStopwordList() {
-		Iterable<Entry<String>> vocabSorted = 
-				   Multisets.copyHighestCountFirst(stemFrequencies).entrySet();
+		try {
+			
+			// try reading stopword list from file system
+			String filePath = "wordlists/" + this.language + ".stopwords";
+			File stopwordFile = new File(getClass().getResource(filePath).toURI());
+
+			List<String> lines = Files.readLines(stopwordFile, Charset.forName("UTF-8"));
+			stopwords = new TreeSet<String>(lines);
 		
-		// identify stop words (most frequent terms)
-		stopwords = new HashSet<String>();
-		int swCount = 0;
-		for (Entry<String> entry : vocabSorted) {
-			String stopword = entry.getElement();
-			if (++swCount > STOP_WORD_RANK) break;
-			if (Character.isLowerCase(stopword.charAt(0))) {
-				stopwords.add(stopword);
-				// add full word type
-			}			
+		} catch (Exception e) {
+			
+			// use top ranks of reference file, if no stopword file is present
+			Iterable<Entry<String>> vocabSorted = 
+					Multisets.copyHighestCountFirst(typeFrequencies).entrySet();
+
+			// identify stop words (most frequent terms)
+			stopwords = new TreeSet<String>();
+			int swCount = 0;
+			for (Entry<String> entry : vocabSorted) {
+				String stopword = entry.getElement();
+				if (++swCount > STOP_WORD_RANK) break;
+				if (Character.isLowerCase(stopword.charAt(0))) {
+					String variant = Character.toString(stopword.charAt(0)).toUpperCase() + stopword.substring(1);
+					// add full word type
+					stopwords.add(stopword);
+					stopwords.add(variant);
+					// add stem
+					stopwords.add(stemmer.stem(stopword));
+					stopwords.add(stemmer.stem(variant));
+				}			
+			}
 		}
 	}
 
@@ -217,7 +241,7 @@ public class Dictionary {
 	public String getTypeFromStem(String stem) {
 		return stemTypeMapping.containsKey(stem) ? stemTypeMapping.get(stem) : stem;
 	}
-	
-	
+
+
 
 }

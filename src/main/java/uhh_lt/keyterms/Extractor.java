@@ -205,30 +205,29 @@ public class Extractor {
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
 		
-		// only apply filter to languages with available stemmer
-		if (this.comparison.getStemmer().getStemmer() instanceof NoStemmer) {
-			return candidates;
-		}
+		// apply language specific filters
+		boolean wordlengthFilter = applyWordlengthFilter(this.language);
+		boolean stopwordFilter = applyStopwordFilter(this.language);
 
 		HashSet<String> filteredSet = new HashSet<String>();
 		for (String candidate : candidates) {
-			// filter out single chars
-			if (candidate.length() < 2) {
-				LOGGER.log(Level.FINEST, "Removed (candidate.length() < 2): " + candidate);
-				continue;
-			}
-			// filter out terms with no alpha chars
-			if (candidate.replaceAll("[^A-Za-z]", "").length() < 1) {
-				LOGGER.log(Level.FINEST, "Removed (candidate.replaceAll(\"[^A-Za-z]\", \"\").length() < 1): " + candidate);
+			// filter out terms with no word chars
+			if (candidate.replaceAll("[^\\p{L}]", "").length() < 1) {
+				LOGGER.log(Level.FINEST, "Removed (candidate.replaceAll(\"[^\\p{L}]\", \"\").length() < 1): " + candidate);
 				continue;
 			};
 			// filter out terms with two or more special chars
 			if (candidate.replaceAll("[\\p{L}-]", "").length() > 1) {
-				LOGGER.log(Level.FINEST, "Removed (candidate.replaceAll([\\\\p{L}-]).length() > 1): " + candidate);
+				LOGGER.log(Level.FINEST, "Removed (candidate.replaceAll([\\p{L}-]).length() > 1): " + candidate);
 				continue;
 			};
+			// filter out single chars
+			if (wordlengthFilter && candidate.length() < 2) {
+				LOGGER.log(Level.FINEST, "Removed (candidate.length() < 2): " + candidate);
+				continue;
+			}
 			// filter out stopwords
-			if (comparison.isStopword(candidate)) {
+			if (stopwordFilter && comparison.isStopword(candidate)) {
 				LOGGER.log(Level.FINEST, "Removed (comparison.isStopword(candidate)): " + candidate);
 				continue;
 			};
@@ -236,6 +235,25 @@ public class Extractor {
 		}
 
 		return filteredSet;
+	}
+
+	private boolean applyWordlengthFilter(String lang) {
+		boolean apply;
+		switch (lang) {
+		case "zho":
+		case "jpn":
+			apply = false;
+			break;
+		default:
+			apply = true;
+			break;
+		}
+		return apply;
+	}
+	
+	
+	private boolean applyStopwordFilter(String lang) {
+		return true;
 	}
 
 	private Double computeLogLikelihood(long a, long b, long c, long d) {
