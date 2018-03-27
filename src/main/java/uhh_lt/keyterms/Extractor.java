@@ -1,4 +1,5 @@
 package uhh_lt.keyterms;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -44,6 +45,7 @@ public class Extractor {
 	private boolean concatMultiWordUnits = true;
 	private double diceThreshold = 0.4;
 	private boolean frequencyMode = false;
+	private String referenceFile = null;
 
 	public Extractor() {
 		super();
@@ -52,6 +54,12 @@ public class Extractor {
 	public Extractor(String language, Integer nKeyterms) throws IOException {
 		super();
 		initialize(language, nKeyterms);
+	}
+
+	public void initialize(String language, Integer nKeyterms) throws IOException {
+		this.language = language;
+		this.nKeyterms = nKeyterms;
+		this.comparison = new Dictionary(language);
 	}
 
 	public String getLanguage() {
@@ -339,6 +347,10 @@ public class Extractor {
 		Option frequencyOpt = new Option("f", "frequency", false, "Output frequency list instead of keyness. Use this to create own reference resources.");
 		frequencyOpt.setRequired(false);
 		cliOptions.addOption(frequencyOpt);
+		
+		Option referenceOpt = new Option("r", "reference", true, "External reference resource file (file format: 'type\\tfrequency', one per line).");
+		referenceOpt.setRequired(false);
+		cliOptions.addOption(referenceOpt);
 
 		Option verboseOpt = new Option("v", "verbose", false, "Output more log information");
 		verboseOpt.setRequired(false);
@@ -386,6 +398,7 @@ public class Extractor {
 			if (cmd.hasOption("d")) {
 				double d = Double.parseDouble(cmd.getOptionValue("d"));
 				if (d < 0 || d > 1) throw new NumberFormatException();
+				this.diceThreshold = d;
 			} else {
 				this.diceThreshold = 0.4;
 			}
@@ -397,6 +410,9 @@ public class Extractor {
 				this.frequencyMode = false;
 			}
 
+			// set dice threshold
+			this.referenceFile = cmd.getOptionValue("r");
+			
 			// set target files
 			targetFiles = cmd.getArgList();
 
@@ -418,7 +434,7 @@ public class Extractor {
 		// concatenate target text files
 		StringBuilder sb = new StringBuilder();
 		for (String f : files) {
-			LOGGER.log(Level.INFO, "Extracting keyterms from " + f);
+			LOGGER.log(Level.INFO, "Extracting from file " + f);
 			try {
 				byte[] raw = Files.readAllBytes(Paths.get(f));
 				String mimeType = Files.probeContentType(Paths.get(f));
@@ -447,7 +463,7 @@ public class Extractor {
 
 
 	private void processFromStdin() {
-		LOGGER.log(Level.INFO, "No file(s) given. Extracting keyterms from standard input (press CTRL-D to finalize input).");
+		LOGGER.log(Level.INFO, "No file(s) given. Using standard input (press CTRL-D to finalize input).");
 		StringBuilder sb = new StringBuilder();
 		Scanner scanner = new Scanner( System.in );
 		while (scanner.hasNextLine()) {
@@ -497,25 +513,50 @@ public class Extractor {
 
 	// Java API
 
-	public void initialize(String language, Integer nKeyterms) throws IOException {
-		this.language = language;
-		this.nKeyterms = nKeyterms;
-		this.comparison = new Dictionary(language);
-		this.comparison.createFromDictionaryFile();
-	}
-
-	public synchronized Set<String> extractKeyTerms(List<String> document) {
-
+	public synchronized Map<String, Double> extractKeyness(List<String> document) {
 		Document targetDocument = new Document(this.language);
 		targetDocument.load(document);
 		targetDocument.normalizeSentenceBeginning(comparison);
 		Dictionary target = new Dictionary(this.language, targetDocument);
+		Map<String, Double> keywords = getKeyterms(target, targetDocument);
+		return keywords;
+	}
+	
+	public synchronized Map<String, Double> extractKeyness(String document) {
+		Document targetDocument = new Document(this.language);
+		targetDocument.load(document);
+		targetDocument.normalizeSentenceBeginning(comparison);
+		Dictionary target = new Dictionary(this.language, targetDocument);
+		Map<String, Double> keywords = getKeyterms(target, targetDocument);
+		return keywords;
+	}
 
+	public synchronized Set<String> extractKeyTerms(List<String> document) {
+		Document targetDocument = new Document(this.language);
+		targetDocument.load(document);
+		targetDocument.normalizeSentenceBeginning(comparison);
+		Dictionary target = new Dictionary(this.language, targetDocument);
+		Map<String, Double> keywords = getKeyterms(target, targetDocument);
+		return keywords.keySet();
+	}
+	
+	public synchronized Set<String> extractKeyTerms(String document) {
+		Document targetDocument = new Document(this.language);
+		targetDocument.load(document);
+		targetDocument.normalizeSentenceBeginning(comparison);
+		Dictionary target = new Dictionary(this.language, targetDocument);
 		Map<String, Double> keywords = getKeyterms(target, targetDocument);
 		return keywords.keySet();
 	}
 
 
+	private void getReferenceResource() {
+		if (this.referenceFile == null) {
+			this.comparison = new Dictionary(this.language);
+		} else {
+			this.comparison = new Dictionary(new File(this.referenceFile), "unknown");
+		}
+	}
 
 	// main
 
@@ -526,14 +567,14 @@ public class Extractor {
 		extractor.log(Level.INFO, "------------------------------------------------------------------");
 		List<String> filesToProcess = extractor.getConfiguration(args);
 
-		extractor.comparison = new Dictionary(extractor.language);
+		extractor.getReferenceResource();
 
 		if (filesToProcess.isEmpty()) {
 			extractor.processFromStdin();
 		} else {
 			extractor.processTargets(filesToProcess);
 		}
-
+		
 	}
 
 }

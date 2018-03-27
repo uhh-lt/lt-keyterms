@@ -9,6 +9,7 @@ import com.google.common.io.Files;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,11 +43,21 @@ public class Dictionary {
 
 
 	public Dictionary(String language) {
+		this(new File("wordlists/" + language + ".tsv"), language, true);
+	}
+	
+
+	public Dictionary(File resourceFile, String language) {
+		this(resourceFile, language, false);
+	}
+	
+	public Dictionary(File resourceFile, String language, boolean loadInternal) {
 		this.language = language;
 		stemmer = new StemmerWrapper(language);
 		try {
-			createFromDictionaryFile();
+			createFromDictionaryFile(resourceFile, loadInternal);
 		} catch (IOException e) {
+			System.err.println(e.getMessage());
 			System.exit(1);
 		}
 	}
@@ -63,9 +74,13 @@ public class Dictionary {
 		createStemTypeMapping();
 	}
 
-	public void createFromDictionaryFile() throws IOException {
-		String filePath = "wordlists/" + this.language + ".tsv";
-		loadDictionaryFile(filePath);
+	public void createFromDictionaryFile(File resourceFile, boolean loadInternal) throws IOException {
+		if (loadInternal) {
+			loadDictionaryFile(getResourceStream(resourceFile));
+		} else {
+			loadDictionaryFile(getFileStream(resourceFile));
+		}
+		
 		createStopwordList();
 		// createStemTypeMapping();
 	}
@@ -210,20 +225,27 @@ public class Dictionary {
 
 	}
 
+	
+	private InputStream getResourceStream(File file) {
+		return getClass().getResourceAsStream(file.getPath());
+	}
+	
+	private InputStream getFileStream(File file) throws IOException {
+		InputStream stream;
+		try {
+			stream = new FileInputStream(file);
+		} catch (FileNotFoundException e) {
+			throw new IOException("Reference file not found: " + file.getPath());
+		}
+		LOGGER.log(Level.INFO, "Reading reference file: " + file.getPath());
+		return stream;
+	}
 
 
-	private void loadDictionaryFile(String filePath) throws IOException {
+	private void loadDictionaryFile(InputStream stream) throws IOException {
 
 		stemFrequencies = TreeMultiset.create();
 		typeFrequencies = TreeMultiset.create();
-
-		InputStream stream = getClass().getResourceAsStream(filePath);
-
-		if (stream != null) {
-			LOGGER.log(Level.INFO, "Reading reference file: " + filePath);
-		} else {
-			LOGGER.log(Level.WARNING, "Reference file not found: " + filePath);
-		}
 
 		int lineCounter = 0;
 		totalCounts = 0L;
@@ -231,6 +253,7 @@ public class Dictionary {
 			String line;
 			while ((line = br.readLine()) != null) {
 				lineCounter++;
+				if (line.isEmpty()) continue;
 				String[] entry = line.split("\t");
 				if (entry.length == 2) {
 
@@ -242,12 +265,8 @@ public class Dictionary {
 					LOGGER.log(Level.SEVERE, "Invalid reference file format at line: " + lineCounter);
 				}
 			}
-		} catch (FileNotFoundException e) {
-			throw new IOException("Unknown language code: " + this.language);
-		} catch (IOException e) {
-			throw new IOException("Could not read file " + filePath);
 		} catch (ArrayIndexOutOfBoundsException e) {
-			throw new IOException("File " + filePath + " malformed at line " + lineCounter);
+			throw new IOException("Reference resource file malformed at line " + lineCounter);
 		}
 	}
 
