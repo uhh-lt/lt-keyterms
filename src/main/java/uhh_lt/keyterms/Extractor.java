@@ -79,8 +79,8 @@ public class Extractor {
 	public void setnKeyterms(int nKeyterms) {
 		this.nKeyterms = nKeyterms;
 	}
-	
-	
+
+
 
 	public boolean concatMultiWordUnits() {
 		return concatMultiWordUnits;
@@ -150,17 +150,14 @@ public class Extractor {
 
 
 	private TreeMap<String, Double> concatMultiWords(TreeMap<String, Double> keyterms, Dictionary target, Document document) {
-		Token prevToken = null;
 		TreeMultiset<NGram> ngrams = TreeMultiset.create();
 		Character currentSeparator = ' ';
 		List<NGram> activeNGrams = new ArrayList<NGram>();
 		for (Token token : document) {
-			if (prevToken != null) {
-				if (token.getValue().equals("-")) {
-					currentSeparator = '-';
-					continue;
-				}
-			}
+			if (token.getValue().equals("-")) {
+				currentSeparator = '-';
+				continue;
+			} 
 			String type = target.getTypeFromStem(token.getStem());
 			if (keyterms.containsKey(type)) {
 
@@ -168,6 +165,7 @@ public class Extractor {
 				activeNGrams.add(ngram);
 				for (NGram ng : activeNGrams) {
 					ng.append(token, type, keyterms.get(type), currentSeparator);
+					currentSeparator = ' ';
 				}
 				for (NGram ng : activeNGrams) {
 					try {
@@ -180,7 +178,6 @@ public class Extractor {
 				activeNGrams = new ArrayList<NGram>();
 				currentSeparator = ' ';
 			}
-			prevToken = token;
 		}
 
 		// filter multiwords by Dice
@@ -347,7 +344,7 @@ public class Extractor {
 		Option frequencyOpt = new Option("f", "frequency", false, "Output frequency list instead of keyness. Use this to create own reference resources.");
 		frequencyOpt.setRequired(false);
 		cliOptions.addOption(frequencyOpt);
-		
+
 		Option referenceOpt = new Option("r", "reference", true, "External reference resource file (file format: 'type\\tfrequency', one per line).");
 		referenceOpt.setRequired(false);
 		cliOptions.addOption(referenceOpt);
@@ -412,7 +409,7 @@ public class Extractor {
 
 			// set dice threshold
 			this.referenceFile = cmd.getOptionValue("r");
-			
+
 			// set target files
 			targetFiles = cmd.getArgList();
 
@@ -521,7 +518,7 @@ public class Extractor {
 		Map<String, Double> keywords = getKeyterms(target, targetDocument);
 		return keywords;
 	}
-	
+
 	public synchronized Map<String, Double> extractKeyness(String document) {
 		Document targetDocument = new Document(this.language);
 		targetDocument.load(document);
@@ -539,7 +536,7 @@ public class Extractor {
 		Map<String, Double> keywords = getKeyterms(target, targetDocument);
 		return keywords.keySet();
 	}
-	
+
 	public synchronized Set<String> extractKeyTerms(String document) {
 		Document targetDocument = new Document(this.language);
 		targetDocument.load(document);
@@ -574,7 +571,7 @@ public class Extractor {
 		} else {
 			extractor.processTargets(filesToProcess);
 		}
-		
+
 	}
 
 }
