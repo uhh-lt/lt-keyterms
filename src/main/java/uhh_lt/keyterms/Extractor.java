@@ -71,12 +71,28 @@ public class Extractor {
 	public void setnKeyterms(int nKeyterms) {
 		this.nKeyterms = nKeyterms;
 	}
+	
+	
 
-	public void log(Level level, String message) {
-		LOGGER.log(level, message);
+	public boolean concatMultiWordUnits() {
+		return concatMultiWordUnits;
 	}
 
+	public void setConcatMultiWordUnits(boolean concatMultiWordUnits) {
+		this.concatMultiWordUnits = concatMultiWordUnits;
+	}
 
+	public double getDiceThreshold() {
+		return diceThreshold;
+	}
+
+	public void setDiceThreshold(double diceThreshold) {
+		this.diceThreshold = diceThreshold;
+	}
+
+	private void log(Level level, String message) {
+		LOGGER.log(level, message);
+	}
 
 	private TreeMap<String, Double> getKeyness(Dictionary target) {
 
