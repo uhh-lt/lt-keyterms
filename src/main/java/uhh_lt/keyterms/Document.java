@@ -158,7 +158,7 @@ public class Document extends ArrayList<Token> {
 		Pattern pattern = Pattern.compile("(\\r\\n|\\r|\\n){2,}", Pattern.DOTALL);
 		Matcher matcher = pattern.matcher(sequence);
 		sequence = matcher.replaceAll("\n.\n");
-		if (this.stemmer.getStemmer() instanceof NoStemmer) {
+		if (this.language.equals("zho") || this.language.equals("jpn") || this.language.equals("ara")) {
 			return tokenizeICU(sequence);
 		} else {
 			return tokenizeRegex(sequence);
