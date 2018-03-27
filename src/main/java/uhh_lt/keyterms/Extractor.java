@@ -1,6 +1,7 @@
 package uhh_lt.keyterms;
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -10,8 +11,11 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -20,11 +24,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
+import com.google.common.base.Charsets;
 import com.google.common.collect.TreeMultiset;
-
-import uhh_lt.keyterms.StemmerWrapper.NoStemmer;
 
 
 public class Extractor {
@@ -38,10 +39,11 @@ public class Extractor {
 
 	private Dictionary comparison;
 
-	private int nKeyterms;
-	private String language;
-	private boolean concatMultiWordUnits;
+	private String language = null;
+	private int nKeyterms = 25;
+	private boolean concatMultiWordUnits = true;
 	private double diceThreshold = 0.4;
+	private boolean frequencyMode = false;
 
 	public Extractor() {
 		super();
@@ -83,7 +85,7 @@ public class Extractor {
 
 		// compute significance
 		TreeMap<String, Double> significances = new TreeMap<String, Double>();
-		Set<String> candidates = target.getVocabulary();
+		Set<String> candidates = target.getStemVocabulary();
 		candidates = filterKeytermCandidates(candidates);
 		for (String type : candidates) {
 			long a = target.getStemFrequency(type);
@@ -204,7 +206,7 @@ public class Extractor {
 
 
 	private Set<String> filterKeytermCandidates(Set<String> candidates) {
-		
+
 		// apply language specific filters
 		boolean wordlengthFilter = applyWordlengthFilter(this.language);
 		boolean stopwordFilter = applyStopwordFilter(this.language);
@@ -250,8 +252,8 @@ public class Extractor {
 		}
 		return apply;
 	}
-	
-	
+
+
 	private boolean applyStopwordFilter(String lang) {
 		return true;
 	}
@@ -318,7 +320,11 @@ public class Extractor {
 		diceOpt.setRequired(false);
 		cliOptions.addOption(diceOpt);
 
-		Option verboseOpt = new Option("v", "verbose", false, "Output debug information");
+		Option frequencyOpt = new Option("f", "frequency", false, "Output frequency list instead of keyness. Use this to create own reference resources.");
+		frequencyOpt.setRequired(false);
+		cliOptions.addOption(frequencyOpt);
+
+		Option verboseOpt = new Option("v", "verbose", false, "Output more log information");
 		verboseOpt.setRequired(false);
 		cliOptions.addOption(verboseOpt);
 
@@ -344,7 +350,11 @@ public class Extractor {
 
 			// set verbosity
 			if (cmd.hasOption("v")) {
-				LOGGER.setLevel(Level.ALL);
+				Logger rootLogger = LogManager.getLogManager().getLogger("");
+				rootLogger.setLevel(Level.FINEST);
+				for (Handler h : rootLogger.getHandlers()) {
+					h.setLevel(Level.FINEST);
+				}
 			} else {
 				LOGGER.setLevel(Level.INFO);
 			}
@@ -362,6 +372,13 @@ public class Extractor {
 				if (d < 0 || d > 1) throw new NumberFormatException();
 			} else {
 				this.diceThreshold = 0.4;
+			}
+
+			// set frequency mode
+			if (cmd.hasOption("f")) {
+				this.frequencyMode = true;
+			} else {
+				this.frequencyMode = false;
 			}
 
 			// set target files
@@ -382,14 +399,35 @@ public class Extractor {
 
 
 	private void processTargets(List<String> files) {
+		// concatenate target text files
+		StringBuilder sb = new StringBuilder();
 		for (String f : files) {
 			LOGGER.log(Level.INFO, "Extracting keyterms from " + f);
-			Document targetDocument = Document.readTextFile(new File(f), this.language);
-			targetDocument.normalizeSentenceBeginning(comparison);
-			Dictionary target = new Dictionary(this.language, targetDocument);
-			System.out.println(formatResult(getKeyterms(target, targetDocument)));
+			try {
+				byte[] raw = Files.readAllBytes(Paths.get(f));
+				String mimeType = Files.probeContentType(Paths.get(f));
+				if (mimeType.startsWith("text")) {
+					String fileContent = new String(raw, Charsets.UTF_8);
+					sb.append(fileContent + "\n");
+				} else {
+					throw new ParseException("File appears to have false format: " + f + "(" + mimeType + ")");
+				}
+			} 
+			catch (ParseException e) {
+				LOGGER.log(Level.SEVERE, e.getMessage());
+				System.exit(1);
+			}
+			catch (IOException e) {
+				LOGGER.log(Level.SEVERE, "Could not read file: " + f);
+				System.exit(1);
+			}
 		}
+		// create dictionary
+		Document targetDocument = Document.readText(sb.toString(), this.language);
+		// process extraction
+		process(targetDocument);
 	}
+
 
 
 	private void processFromStdin() {
@@ -400,10 +438,33 @@ public class Extractor {
 			sb.append(scanner.nextLine()).append("\n");
 		}
 		scanner.close();
+		// create dictionary
 		Document targetDocument = Document.readText(sb.toString(), this.language);
+		// process extraction
+		process(targetDocument);
+	}
+
+
+	private void process(Document targetDocument) {
 		targetDocument.normalizeSentenceBeginning(comparison);
 		Dictionary target = new Dictionary(this.language, targetDocument);
-		System.out.println(formatResult(getKeyterms(target, targetDocument)));
+
+		String result;
+		if (this.frequencyMode) {
+			result = formatResult(target);
+		} else {
+			result = formatResult(getKeyterms(target, targetDocument));
+		}
+		System.out.println(result);
+	}
+
+
+	private String formatResult(Dictionary dictionary) {
+		StringBuilder sb = new StringBuilder();
+		for (Map.Entry<String, Long> entry : dictionary.getTypeFrequencies().entrySet()) {
+			sb.append(entry.getKey() + "\t" + entry.getValue() + "\n");
+		}
+		return sb.toString();
 	}
 
 
@@ -418,6 +479,7 @@ public class Extractor {
 		return output.toString();
 	}
 
+	// Java API
 
 	public void initialize(String language, Integer nKeyterms) throws IOException {
 		this.language = language;
@@ -426,7 +488,7 @@ public class Extractor {
 		this.comparison.createFromDictionaryFile();
 	}
 
-	public synchronized Set<String> extract(List<String> document) {
+	public synchronized Set<String> extractKeyTerms(List<String> document) {
 
 		Document targetDocument = new Document(this.language);
 		targetDocument.load(document);
@@ -439,7 +501,7 @@ public class Extractor {
 
 
 
-
+	// main
 
 	public static void main(String[] args) {
 

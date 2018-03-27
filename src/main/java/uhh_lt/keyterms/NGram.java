@@ -1,10 +1,6 @@
 package uhh_lt.keyterms;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.TreeMap;
-
-import com.google.common.collect.TreeMultiset;
 
 public class NGram implements Comparable<NGram> {
 
@@ -108,14 +104,10 @@ public class NGram implements Comparable<NGram> {
 	}
 
 	public Double keyness() {
-		// Double maxKeyness = .0;
 		Double meanKeyness = .0;
 		for (Token token : tokenSequence) {
 			double k = token.getSignificance();
 			meanKeyness += k;
-//			if (k > maxKeyness) {
-//				maxKeyness = k;
-//			}
 		}
 		meanKeyness = tokenSequence.size() > 0 ? meanKeyness / (double) tokenSequence.size() : 0;
 		return meanKeyness;

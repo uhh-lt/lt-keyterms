@@ -14,12 +14,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class Dictionary {
@@ -97,7 +99,7 @@ public class Dictionary {
 
 	}
 
-	public void createStopwordList() {
+	private void createStopwordList() {
 		try {
 			
 			// try reading stopword list from file system
@@ -145,8 +147,20 @@ public class Dictionary {
 		return Integer.toUnsignedLong(stemFrequencies.count(stem));
 	}
 
-	public Set<String> getVocabulary() {
+	public Set<String> getStemVocabulary() {
 		return stemFrequencies.elementSet();
+	}
+	
+	public Set<String> getTypeVocabulary() {
+		return typeFrequencies.elementSet();
+	}
+	
+	public TreeMap<String, Long> getTypeFrequencies() {
+		HashMap<String, Long> counts = new HashMap<String, Long>();
+		for (String type : getTypeVocabulary()) {
+			counts.put(type, getTypeFrequency(type));
+		}
+		return sortMapByValue(counts);
 	}
 
 	public Long getTotalCounts() {
@@ -161,7 +175,7 @@ public class Dictionary {
 	//		return stemFrequencies.keySet();
 	//	}
 
-	public void createStemTypeMapping() {
+	private void createStemTypeMapping() {
 
 		stemTypeMapping = new HashMap<String, String>();
 
@@ -198,7 +212,7 @@ public class Dictionary {
 
 
 
-	public void loadDictionaryFile(String filePath) throws IOException {
+	private void loadDictionaryFile(String filePath) throws IOException {
 
 		stemFrequencies = TreeMultiset.create();
 		typeFrequencies = TreeMultiset.create();
@@ -242,6 +256,26 @@ public class Dictionary {
 		return stemTypeMapping.containsKey(stem) ? stemTypeMapping.get(stem) : stem;
 	}
 
+	static class LongValueComparator implements Comparator<String>{
+		HashMap<String, Long> map = new HashMap<String, Long>();
+		public LongValueComparator(Map<String, Long> map){
+			this.map.putAll(map);
+		}
+		@Override
+		public int compare(String s1, String s2) {
+			if(map.get(s1) > map.get(s2)) {
+				return -1;
+			} else {
+				return 1;
+			}
+		}
+	}
 
+	private static TreeMap<String, Long> sortMapByValue(Map<String, Long> map){
+		Comparator<String> comparator = new LongValueComparator(map);
+		TreeMap<String, Long> result = new TreeMap<String, Long>(comparator);
+		result.putAll(map);
+		return result;
+	}
 
 }

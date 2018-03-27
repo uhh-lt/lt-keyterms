@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.text.CharacterIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,27 +16,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.tartarus.snowball.SnowballStemmer;
-import org.tartarus.snowball.ext.danishStemmer;
-import org.tartarus.snowball.ext.dutchStemmer;
-import org.tartarus.snowball.ext.englishStemmer;
-import org.tartarus.snowball.ext.finnishStemmer;
-import org.tartarus.snowball.ext.frenchStemmer;
-import org.tartarus.snowball.ext.germanStemmer;
-import org.tartarus.snowball.ext.hungarianStemmer;
-import org.tartarus.snowball.ext.italianStemmer;
-import org.tartarus.snowball.ext.norwegianStemmer;
-import org.tartarus.snowball.ext.portugueseStemmer;
-import org.tartarus.snowball.ext.romanianStemmer;
-import org.tartarus.snowball.ext.russianStemmer;
-import org.tartarus.snowball.ext.spanishStemmer;
-import org.tartarus.snowball.ext.swedishStemmer;
-import org.tartarus.snowball.ext.turkishStemmer;
-
 import com.ibm.icu.text.BreakIterator;
-import com.ibm.icu.text.RuleBasedBreakIterator;
-
-import uhh_lt.keyterms.StemmerWrapper.NoStemmer;
 
 public class Document extends ArrayList<Token> {
 
@@ -121,7 +100,7 @@ public class Document extends ArrayList<Token> {
 
 	}
 
-	public List<String> tokenizeRegex(String sequence) {
+	private List<String> tokenizeRegex(String sequence) {
 		sequence = sequence.replaceAll("\\r\\n|\\r|\\n", " ");
 		Matcher matcher = wordbounds.matcher(sequence);
 		List<String> tokenList = new ArrayList<String>();
@@ -135,7 +114,7 @@ public class Document extends ArrayList<Token> {
 	}
 
 
-	public List<String> tokenizeICU(String sequence) throws MissingResourceException {
+	private List<String> tokenizeICU(String sequence) throws MissingResourceException {
 
 		Locale locale = getIso2LocaleMap().get(this.language);
 		if (locale == null) {
@@ -165,7 +144,7 @@ public class Document extends ArrayList<Token> {
 		}
 	}
 
-	public static Map<String, Locale> getIso2LocaleMap() {
+	private static Map<String, Locale> getIso2LocaleMap() {
 		String[] languages = Locale.getISOLanguages();
 		Map<String, Locale> localeMap = new HashMap<String, Locale>(languages.length);
 		for (String language : languages) {
