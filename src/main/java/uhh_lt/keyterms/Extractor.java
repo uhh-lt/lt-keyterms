@@ -165,7 +165,6 @@ public class Extractor {
 				activeNGrams.add(ngram);
 				for (NGram ng : activeNGrams) {
 					ng.append(token, type, keyterms.get(type), currentSeparator);
-					currentSeparator = ' ';
 				}
 				for (NGram ng : activeNGrams) {
 					try {
@@ -174,6 +173,7 @@ public class Extractor {
 						e.printStackTrace();
 					}
 				}
+				currentSeparator = ' ';
 			} else {
 				activeNGrams = new ArrayList<NGram>();
 				currentSeparator = ' ';

@@ -116,7 +116,7 @@ You can use the package via maven. Add this to your `pom.xml`
 	<dependency>
 	    <groupId>com.github.uhh-lt</groupId>
 	    <artifactId>lt-keyterms</artifactId>
-	    <version>-SNAPSHOT</version>
+	    <version>0.9</version>
 	</dependency>
 ```
 
