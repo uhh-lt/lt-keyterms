@@ -115,6 +115,9 @@ public class Dictionary {
 	}
 
 	private void createStopwordList() {
+		
+		stopwords = new TreeSet<String>();
+		
 		try {
 			
 			// try reading stopword list from file system
@@ -122,7 +125,9 @@ public class Dictionary {
 			File stopwordFile = new File(getClass().getResource(filePath).toURI());
 
 			List<String> lines = Files.readLines(stopwordFile, Charset.forName("UTF-8"));
-			stopwords = new TreeSet<String>(lines);
+			for (String stopword : lines) {
+				addToStopwordList(stopword);
+			}
 		
 		} catch (Exception e) {
 			
@@ -131,22 +136,25 @@ public class Dictionary {
 					Multisets.copyHighestCountFirst(typeFrequencies).entrySet();
 
 			// identify stop words (most frequent terms)
-			stopwords = new TreeSet<String>();
 			int swCount = 0;
 			for (Entry<String> entry : vocabSorted) {
 				String stopword = entry.getElement();
 				if (++swCount > STOP_WORD_RANK) break;
 				if (Character.isLowerCase(stopword.charAt(0))) {
-					String variant = Character.toString(stopword.charAt(0)).toUpperCase() + stopword.substring(1);
-					// add full word type
-					stopwords.add(stopword);
-					stopwords.add(variant);
-					// add stem
-					stopwords.add(stemmer.stem(stopword));
-					stopwords.add(stemmer.stem(variant));
+					addToStopwordList(stopword);
 				}			
 			}
 		}
+	}
+	
+	private void addToStopwordList(String stopword) {
+		String variant = Character.toString(stopword.charAt(0)).toUpperCase() + stopword.substring(1);
+		// add full word type
+		stopwords.add(stopword);
+		stopwords.add(variant);
+		// add stem
+		stopwords.add(stemmer.stem(stopword));
+		stopwords.add(stemmer.stem(variant));
 	}
 
 
