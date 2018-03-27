@@ -16,6 +16,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -208,8 +209,9 @@ public class Extractor {
 
 
 	private boolean longerMatchExists(String candidate, Set<String> testSet) {
+		String quotedCandidate = Pattern.quote(candidate);
 		for (String c : testSet) {
-			if (c.matches(candidate + "[ -].+") || c.matches(".+[ -]" + candidate)) return true;
+			if (c.matches(quotedCandidate + "[ -].+") || c.matches(".+[ -]" + quotedCandidate)) return true;
 		}
 		return false;
 	}
