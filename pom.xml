@@ -23,36 +23,34 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<archive>
+						<manifest>
+							<mainClass>uhh_lt.keyterms.Extractor</mainClass>
+						</manifest>
+					</archive>
+					<finalName>lt-keyterms</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
+					<attach>false</attach>
+				</configuration>
 				<executions>
 					<execution>
-						<id>jar-with-dependencies</id>
+						<id>make-assembly</id>
 						<phase>package</phase>
 						<goals>
 							<goal>single</goal>
 						</goals>
-						<configuration>
-							<archive>
-								<manifest>
-									<mainClass>uhh_lt.keyterms.Extractor</mainClass>
-								</manifest>
-							</archive>
-							<descriptorRefs>
-								<descriptorRef>jar-with-dependencies</descriptorRef>
-							</descriptorRefs>
-							<finalName>lt-keyterms</finalName>
-							<appendAssemblyId>false</appendAssemblyId>
-							<attach>false</attach>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>
 		</plugins>
 		<resources>
 			<resource>
-				<directory>resources</directory>
-				<excludes>
-					<exclude>*.txt</exclude>
-				</excludes>
+				<filtering>false</filtering>
+				<directory>src/main/java</directory>
 			</resource>
 		</resources>
 	</build>
