@@ -28,6 +28,7 @@ import java.util.TreeSet;
 
 public class Dictionary {
 
+	public static final int MAX_TYPE_LENGTH = 50;
 	public static final int STOP_WORD_RANK = 500;
 	private final static Logger LOGGER = 
 			Logger.getLogger(Extractor.class.getName());
@@ -86,8 +87,12 @@ public class Dictionary {
 		// createStemTypeMapping();
 	}
 
-	private String clean(String token) {
-		return token.replaceAll("^[^\\p{L}]", "").replaceAll("[^\\p{L}]$", "");
+	private String clean(String type) {
+		if (type.length() > MAX_TYPE_LENGTH) {
+			return "";
+		} else {
+			return type.replaceAll("^[^\\p{L}]", "").replaceAll("[^\\p{L}]$", "");
+		}
 	}
 
 	public StemmerWrapper getStemmer() {
