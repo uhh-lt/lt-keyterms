@@ -32,6 +32,7 @@ import com.google.common.collect.TreeMultiset;
 
 public class Extractor {
 
+	private static final Integer MAX_MWU_LENGTH = 4;
 	private final static Double MINIMUM_KEYNESS_THRESHOLD = 6.63; // 3.84;
 
 	private final static Logger LOGGER = 
@@ -153,7 +154,7 @@ public class Extractor {
 	private TreeMap<String, Double> concatMultiWords(TreeMap<String, Double> keyterms, Dictionary target, Document document) {
 		TreeMultiset<NGram> ngrams = TreeMultiset.create();
 		Character currentSeparator = ' ';
-		List<NGram> activeNGrams = new ArrayList<NGram>();
+		ArrayList<NGram> activeNGrams = new ArrayList<NGram>();
 		for (Token token : document) {
 			if (token.getValue().equals("-")) {
 				currentSeparator = '-';
@@ -164,7 +165,9 @@ public class Extractor {
 
 				NGram ngram = new NGram();
 				activeNGrams.add(ngram);
-				for (NGram ng : activeNGrams) {
+				int fromIndex = Math.max(0, activeNGrams.size() - MAX_MWU_LENGTH);
+				int toIndex = activeNGrams.size();
+				for (NGram ng : activeNGrams.subList(fromIndex, toIndex)) {
 					ng.append(token, type, keyterms.get(type), currentSeparator);
 				}
 				for (NGram ng : activeNGrams) {
