@@ -5,8 +5,6 @@ import java.util.logging.Logger;
 import com.google.common.collect.Multiset.Entry;
 import com.google.common.collect.Multisets;
 import com.google.common.collect.TreeMultiset;
-import com.google.common.io.Files;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,12 +12,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -128,7 +123,7 @@ public class Dictionary {
 			
 			// try reading stopword list from file system
 			String filePath = "wordlists/" + this.language + ".stopwords";
-			InputStream stream = getClass().getResourceAsStream(filePath);
+			InputStream stream = getClass().getClassLoader().getResourceAsStream(filePath);
 			BufferedReader br = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
 			String stopword;
 			while ((stopword = br.readLine()) != null) {
@@ -241,7 +236,7 @@ public class Dictionary {
 
 	
 	private InputStream getResourceStream(File file) {
-		return getClass().getResourceAsStream(file.getPath());
+		return getClass().getClassLoader().getResourceAsStream(file.getPath());
 	}
 	
 	private InputStream getFileStream(File file) throws IOException {

@@ -47,12 +47,6 @@
 				</executions>
 			</plugin>
 		</plugins>
-		<resources>
-			<resource>
-				<filtering>false</filtering>
-				<directory>src/main/java</directory>
-			</resource>
-		</resources>
 	</build>
 	<packaging>jar</packaging>
 
