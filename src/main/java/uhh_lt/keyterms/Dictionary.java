@@ -51,6 +51,7 @@ public class Dictionary {
 	public Dictionary(File resourceFile, String language, boolean loadInternal) {
 		this.language = language;
 		stemmer = new StemmerWrapper(language);
+		stopwords = new TreeSet<String>();
 		try {
 			createFromDictionaryFile(resourceFile, loadInternal);
 		} catch (IOException e) {
@@ -62,12 +63,12 @@ public class Dictionary {
 	public Dictionary(String language, Document document) {
 		this.language = language;
 		stemmer = new StemmerWrapper(language);
+		stopwords = new TreeSet<String>();
 		createFromDocument(document);
 	}
 
 	public void createFromDocument(Document document) {
 		countVocabulary(document);
-		// createStopwordList();
 		createStemTypeMapping();
 	}
 
@@ -78,8 +79,8 @@ public class Dictionary {
 			loadDictionaryFile(getFileStream(resourceFile));
 		}
 		
-		createStopwordList();
-		// createStemTypeMapping();
+		this.stopwords = createStopwordList(this.language);
+		this.stopwords.addAll(createStopwordList("all"));
 	}
 
 	private String clean(String type) {
@@ -115,19 +116,19 @@ public class Dictionary {
 
 	}
 
-	private void createStopwordList() {
+	private TreeSet<String> createStopwordList(String langCode) {
 		
-		stopwords = new TreeSet<String>();
+		TreeSet<String> stopwords = new TreeSet<String>();
 		
 		try {
 			
 			// try reading stopword list from file system
-			String filePath = "wordlists/" + this.language + ".stopwords";
+			String filePath = "wordlists/" + langCode + ".stopwords";
 			InputStream stream = getClass().getClassLoader().getResourceAsStream(filePath);
 			BufferedReader br = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
 			String stopword;
 			while ((stopword = br.readLine()) != null) {
-				addToStopwordList(stopword.trim());
+				addToStopwordList(stopwords, stopword.trim());
 			}
 		
 		} catch (Exception e) {
@@ -142,13 +143,14 @@ public class Dictionary {
 				String stopword = entry.getElement();
 				if (++swCount > STOP_WORD_RANK) break;
 				if (Character.isLowerCase(stopword.charAt(0))) {
-					addToStopwordList(stopword);
+					addToStopwordList(stopwords, stopword);
 				}			
 			}
 		}
+		return stopwords;
 	}
 	
-	private void addToStopwordList(String stopword) {
+	private void addToStopwordList(SortedSet<String> stopwords, String stopword) {
 		String variant = Character.toString(stopword.charAt(0)).toUpperCase() + stopword.substring(1);
 		// add full word type
 		stopwords.add(stopword);
@@ -217,7 +219,6 @@ public class Dictionary {
 			String shortestType = "";
 			Integer shortestTypeLength = Integer.MAX_VALUE;
 
-			// TODO: better choose most frequent type instead of shortest one?
 			for (String type : entry.getValue()) {
 				if (type.length() < shortestTypeLength) {
 					shortestTypeLength = type.length();
