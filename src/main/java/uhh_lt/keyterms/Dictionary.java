@@ -307,4 +307,9 @@ public class Dictionary {
 		return result;
 	}
 
+
+	public SortedSet<String> getStopwords() {
+		return this.stopwords;
+	}
+
 }

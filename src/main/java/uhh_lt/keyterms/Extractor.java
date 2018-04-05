@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -549,6 +550,10 @@ public class Extractor {
 		Dictionary target = new Dictionary(this.language, targetDocument);
 		Map<String, Double> keywords = getKeyterms(target, targetDocument);
 		return keywords.keySet();
+	}
+	
+	public synchronized SortedSet<String> getStopwords() {
+		return comparison.getStopwords();
 	}
 
 
